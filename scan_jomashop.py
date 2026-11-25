@@ -11,7 +11,7 @@ MIN_PRICE_USD = 250.0       # Ignore broken $0 listings
 
 URLS_TO_SCAN = [
     "https://www.jomashop.com/rolex-watches.html?gender=Mens&sort=price_asc",
-    "https://www.jomashop.com/pre-owned-rolex-watches.html?gender=Mens&sort=price_asc",
+    "https://www.jomashop.com/collections/preowned-watches/Mens-Rolex-Pre-owned-Watches~Z2VuZGVyfk1lbidzfn5tYW51ZmFjdHVyZXJ-Um9sZXg?sort=price_asc",
 ]
 
 ALERTED_FILE = "alerted_watches.json"
@@ -46,7 +46,6 @@ def send_ntfy(title, message, click_url):
 
 def extract_actual_price(text):
     """Strips coupon/savings/monthly amounts and returns the watch's actual sale price."""
-    # Remove phrases like 'Save $500', '$300 Off', '$200/mo', 'Up to $500'
     cleaned = re.sub(r"(?:save|off|up to)\s*\$\s?\d[\d,]*(?:\.\d{2})?", " ", text, flags=re.IGNORECASE)
     cleaned = re.sub(r"\$\s?\d[\d,]*(?:\.\d{2})?\s*(?:off|/mo|per month)", " ", cleaned, flags=re.IGNORECASE)
 
@@ -55,7 +54,6 @@ def extract_actual_price(text):
 
     if not prices:
         return None
-    # Jomashop lists Retail/MSRP first and the actual sale price second
     return prices[-1]
 
 
@@ -91,11 +89,11 @@ def scan():
 
                 cards = page.evaluate("""() => {
                     const results = [];
-                    const links = document.querySelectorAll('a[href*="/rolex-"]');
+                    const links = document.querySelectorAll('a[href*="rolex-"][href$=".html"]');
                     const seen = new Set();
                     for (const a of links) {
                         const href = a.href;
-                        if (seen.has(href) || !href.endsWith('.html')) continue;
+                        if (seen.has(href)) continue;
                         let card = a.parentElement;
                         for (let i = 0; i < 6 && card; i++) {
                             if (card.innerText && card.innerText.includes('$') && card.innerText.length < 1200) {
