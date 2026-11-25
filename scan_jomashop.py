@@ -10,8 +10,8 @@ MAX_PRICE_USD = 2000.0      # Alert on any Men's Rolex under $2,000
 MIN_PRICE_USD = 250.0       # Ignore broken $0 listings
 
 URLS_TO_SCAN = [
-    "https://www.jomashop.com/rolex-watches.html?gender=Mens&sort=price_asc",
-    "https://www.jomashop.com/collections/preowned-watches/Mens-Rolex-Pre-owned-Watches~Z2VuZGVyfk1lbidzfn5tYW51ZmFjdHVyZXJ-Um9sZXg?sort=price_asc",
+    "https://www.jomashop.com/rolex-watches.html?gender=Mens&condition=Pre-owned&sort=price_asc",
+    "https://www.jomashop.com/rolex-watches.html?gender=Mens&condition=New&sort=price_asc",
 ]
 
 ALERTED_FILE = "alerted_watches.json"
