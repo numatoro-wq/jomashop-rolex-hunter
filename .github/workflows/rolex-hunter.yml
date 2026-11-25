@@ -1,0 +1,39 @@
+name: Jomashop Rolex Hunter
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scan-rolex:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+
+      - name: Install Playwright & Chromium
+        run: |
+          pip install playwright
+          playwright install chromium
+
+      - name: Run Jomashop Rolex scan
+        run: python scan_jomashop.py
+
+      - name: Save alerted watches if updated
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add alerted_watches.json
+            git commit -m "Log alerted Rolex watches"
+            git push
+          fi
