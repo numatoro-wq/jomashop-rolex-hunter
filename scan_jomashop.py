@@ -7,11 +7,11 @@ from playwright.sync_api import sync_playwright
 # --- CONFIGURATION ---
 NTFY_TOPIC = os.getenv("NTFY_TOPIC") or "jomashop-rolex-84291"
 MAX_PRICE_USD = 2000.0      # Alert on any Men's Rolex under $2,000
-MIN_PRICE_USD = 100.0       # Ignore $0 / broken placeholder listings
+MIN_PRICE_USD = 250.0       # Ignore broken $0 listings
 
 URLS_TO_SCAN = [
     "https://www.jomashop.com/rolex-watches.html?gender=Mens&sort=price_asc",
-    "https://www.jomashop.com/preowned-rolex-watches.html?gender=Mens&sort=price_asc",
+    "https://www.jomashop.com/pre-owned-rolex-watches.html?gender=Mens&sort=price_asc",
 ]
 
 ALERTED_FILE = "alerted_watches.json"
@@ -44,10 +44,19 @@ def send_ntfy(title, message, click_url):
     urllib.request.urlopen(req, timeout=10)
 
 
-def parse_usd_prices(text):
-    """Extracts USD prices like $1,895.00 or $4,500."""
-    matches = re.findall(r"\$\s?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)", text)
-    return [float(m.replace(",", "")) for m in matches]
+def extract_actual_price(text):
+    """Strips coupon/savings/monthly amounts and returns the watch's actual sale price."""
+    # Remove phrases like 'Save $500', '$300 Off', '$200/mo', 'Up to $500'
+    cleaned = re.sub(r"(?:save|off|up to)\s*\$\s?\d[\d,]*(?:\.\d{2})?", " ", text, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\$\s?\d[\d,]*(?:\.\d{2})?\s*(?:off|/mo|per month)", " ", cleaned, flags=re.IGNORECASE)
+
+    matches = re.findall(r"\$\s?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)", cleaned)
+    prices = [float(m.replace(",", "")) for m in matches if float(m.replace(",", "")) >= MIN_PRICE_USD]
+
+    if not prices:
+        return None
+    # Jomashop lists Retail/MSRP first and the actual sale price second
+    return prices[-1]
 
 
 def scan():
@@ -69,7 +78,6 @@ def scan():
         context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
         page = context.new_page()
 
-        # Block heavy images/fonts for fast loading
         page.route("**/*.{png,jpg,jpeg,gif,webp,svg,woff,woff2}", lambda route: route.abort())
 
         for idx, url in enumerate(URLS_TO_SCAN):
@@ -112,23 +120,15 @@ def scan():
                     text = item["text"]
                     upper_text = text.upper()
 
-                    # Skip out-of-stock items or ladies/women models
                     if "OUT OF STOCK" in upper_text or "SOLD OUT" in upper_text:
                         continue
                     if any(w in upper_text for w in ["LADIES", "LADY-DATEJUST", "WOMEN'S", "WOMENS"]):
                         continue
 
-                    prices = parse_usd_prices(text)
-                    if not prices:
+                    current_price = extract_actual_price(text)
+                    if current_price is None:
                         continue
 
-                    # Jomashop lists retail/was price and current sale price; lowest USD value in card is the buy price
-                    current_price = min(prices)
-
-                    if current_price < MIN_PRICE_USD:
-                        continue
-
-                    # Clean watch title from URL slug
                     slug_match = re.search(r"/([^/]+)\.html", href)
                     title_line = (
                         slug_match.group(1).replace("-", " ").title()
