@@ -10,8 +10,7 @@ MAX_PRICE_USD = 2000.0      # Alert on any Men's Rolex under $2,000
 MIN_PRICE_USD = 250.0       # Ignore broken $0 listings
 
 URLS_TO_SCAN = [
-    "https://www.jomashop.com/rolex-watches.html?gender=Mens&condition=Pre-owned&sort=price_asc",
-    "https://www.jomashop.com/rolex-watches.html?gender=Mens&condition=New&sort=price_asc",
+    "https://www.jomashop.com/rolex-watches.html?gender=Mens&sort=price_asc",
 ]
 
 ALERTED_FILE = "alerted_watches.json"
@@ -78,12 +77,16 @@ def scan():
 
         page.route("**/*.{png,jpg,jpeg,gif,webp,svg,woff,woff2}", lambda route: route.abort())
 
-        for idx, url in enumerate(URLS_TO_SCAN):
-            page.wait_for_timeout(2000 if idx > 0 else 1500)
+        for url in URLS_TO_SCAN:
+            page.wait_for_timeout(1500)
             print(f"Scanning: {url}", flush=True)
             try:
                 resp = page.goto(url, wait_until="commit", timeout=20000)
-                page.wait_for_timeout(5000)
+                page.wait_for_timeout(4000)
+                # Scroll down so Jomashop renders all lazy-loaded watches on page 1
+                page.mouse.wheel(0, 2000)
+                page.wait_for_timeout(2000)
+
                 status = resp.status if resp else "No response"
                 print(f"  HTTP {status} | Title: '{page.title()}'", flush=True)
 
